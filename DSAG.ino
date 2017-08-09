@@ -30,6 +30,16 @@ unsigned long milli;
 
 String mac;
 
+char c_mac[18];
+
+char *id;
+
+String s_topic;
+
+char data[20];
+
+char topic[26];
+
 void setup() {
 
     Wire.begin(5, 4);
@@ -91,22 +101,76 @@ void setup() {
     delay(100);
 
     mac = WiFi.macAddress();
-    Serial.print(mac);
-    delay(10000);
+
+    mac.toCharArray(c_mac, 18);
+    Serial.println(c_mac);
+
+    id = c_mac;
+
+    Serial.println(id);
+    
+    s_topic = "test/jj/" + String(id);
+
+    s_topic.toCharArray(topic, (s_topic.length() + 1));
 }
 
 void loop() {
+    // Connect to Wifi
+    if (WiFi.status() != WL_CONNECTED) {
+    Serial.print("Connecting to ");
+    Serial.print(ssid);
+    Serial.println("...");
+    WiFi.begin(ssid, pass);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+      return;
+    Serial.println("WiFi connected");
+    delay(10000);
+    }
+
+
+    // Connect to MQTT
+    if (WiFi.status() == WL_CONNECTED) {
+      if (!client.connected()) {
+        Serial.println("Connecting to MQTT server");
+        // .set_auth("test", "test")
+        if (client.connect(id, "test", "test")) {
+          Serial.println("Connected to MQTT server");
+        } else {
+          Serial.println("Could not connect to MQTT server");
+          delay(5000);
+        }
+      }
+    }
+
+    //Send data to the MQTT
+    if (client.connected()){
+
+      milli = millis();
+//    Serial.print(float(milli/1000.0000), 3); Serial.print(";");
+      float fmill = float(milli/1000.0000);
+      // these methods (and a few others) are also available
+      accelgyro.getAcceleration(&ax, &ay, &az);
+      float fx = float(ax/4096.00);
+      float fy = float(ay/4096.00);
+      float fz = float(az/4096.00);
+    
+      String pay = String(fmill) + ";" + String(fx) + ";" + String(fy) + ";" + String(fz); 
+      Serial.println(pay);
+      pay.toCharArray(data, (pay.length() + 1));
+      
+      client.publish(topic, data, true);
+
+      delay(200);
+
+      client.loop();
+    }
 
     
-    milli = millis();
-    Serial.print(float(milli/1000.0000), 3); Serial.print(";");
-    // these methods (and a few others) are also available
-    accelgyro.getAcceleration(&ax, &ay, &az);
 
     // display tab-separated accel x/y/z values
-    Serial.print(float(ax/4096.00)); Serial.print(";");
-    Serial.print(float(ay/4096.00)); Serial.print(";");
-    Serial.print(float(az/4096.00)); Serial.print("\n");
+//    Serial.print(float(ax/4096.00)); Serial.print(";");
+//    Serial.print(float(ay/4096.00)); Serial.print(";");
+//    Serial.print(float(az/4096.00)); Serial.print("\n");
 
     delay(200);
 
