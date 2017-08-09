@@ -19,7 +19,7 @@ MPU6050 accelgyro;
 //MPU6050 accelgyro(0x69); // <-- use for AD0 high
 
 
-//const char* mac = char(WiFi.macAddress);
+
 WiFiClientSecure wclient;
 PubSubClient client(host, port, wclient);
 
@@ -28,7 +28,7 @@ int16_t ax, ay, az;
 
 unsigned long milli;
 
-
+String mac;
 
 void setup() {
 
@@ -89,6 +89,10 @@ void setup() {
 
     accelgyro.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
     delay(100);
+
+    mac = WiFi.macAddress();
+    Serial.print(mac);
+    delay(10000);
 }
 
 void loop() {
