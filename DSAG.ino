@@ -8,6 +8,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
+#include "settings.h"
 
 
 // class default I2C address is 0x68
@@ -17,19 +18,15 @@
 MPU6050 accelgyro;
 //MPU6050 accelgyro(0x69); // <-- use for AD0 high
 
-const char *ssid =  "mainframe.iot";
-const char *pass =  "mA1nfrAm3#10T-";  
-const char* host = "spacegate.mainframe.lan";
-const int port = 8883;
-const char* fingerprint = 'D5 CB 44 A6 4C FB 43 B7 BD B3 BE FA 1B A7 E4 6E BB 64 10 17';
-const char* mac = WiFi.macAddress;
+
+//const char* mac = char(WiFi.macAddress);
 WiFiClientSecure wclient;
 PubSubClient client(host, port, wclient);
 
 
 int16_t ax, ay, az;
 
-unsigned long time;
+unsigned long milli;
 
 
 
@@ -97,8 +94,8 @@ void setup() {
 void loop() {
 
     
-    time = millis();
-    Serial.print(float(time/1000.0000), 3); Serial.print(";");
+    milli = millis();
+    Serial.print(float(milli/1000.0000), 3); Serial.print(";");
     // these methods (and a few others) are also available
     accelgyro.getAcceleration(&ax, &ay, &az);
 
