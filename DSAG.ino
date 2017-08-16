@@ -20,98 +20,61 @@ MPU6050 accelgyro;
 
 
 
-WiFiClientSecure wclient;
-PubSubClient client(host, port, wclient);
-
+//WiFiClientSecure wclient;
+WiFiClient client;
+//PubSubClient mqtt_client(mqtt_host, mqtt_port, client);
 
 int16_t ax, ay, az;
 
 unsigned long milli;
 
-String mac;
-
-char c_mac[18];
-
 char *id;
 
-String s_topic;
 
 char data[20];
 
 char topic[26];
 
+//-------------------------------------------
+//              SETUP
+//-------------------------------------------
+
 void setup() {
 
     Wire.begin(5, 4);
         
-
-    // initialize serial communication
-    // (38400 chosen because it works as well at 8MHz as it does at 16MHz, but
-    // it's really up to you depending on your project)
     Serial.begin(115200);
-
-    Serial.println("test2");
-    
-    // join I2C bus (I2Cdev library doesn't do this automatically)
-//    #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-
-//    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-//        Fastwire::setup(400, true);
-//        Serial.println("test3");
-//    #endif
-
-    
 
     // initialize device
     Serial.println("Initializing I2C devices...");
     accelgyro.initialize();
-
-    Serial.println("test1");
 
     // verify connection
     Serial.println("Testing device connections...");
     delay(100);
     Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
 
-    // use the code below to change accel/gyro offset values
-//    Serial.println("Updating internal sensor offsets...");
-    delay(100);
-    // -76	-2359	1688	0	0	0
-//    Serial.print(accelgyro.getXAccelOffset()); Serial.print("\t"); // -1147
-//    delay(100);
-//    Serial.print(accelgyro.getYAccelOffset()); Serial.print("\t"); // 349
-//    delay(100);
-//    Serial.print(accelgyro.getZAccelOffset()); Serial.print("\t"); // 1305
-//    delay(100);
-//    Serial.print("\n");
-//    delay(500);
     accelgyro.setXAccelOffset(-1515);
     accelgyro.setYAccelOffset(2068);
     accelgyro.setZAccelOffset(1151);
-//    Serial.print(accelgyro.getXAccelOffset()); Serial.print("\t"); // -1147
-//    delay(100);
-//    Serial.print(accelgyro.getYAccelOffset()); Serial.print("\t"); // 349
-//    delay(100);
-//    Serial.print(accelgyro.getZAccelOffset()); Serial.print("\t"); // 1305
-//    delay(100);
-//    Serial.print("\n");
-//    delay(100);
 
     accelgyro.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
     delay(100);
 
-    mac = WiFi.macAddress();
-
-    mac.toCharArray(c_mac, 18);
-    Serial.println(c_mac);
-
-    id = c_mac;
-
-    Serial.println(id);
     
-    s_topic = "test/jj/" + String(id);
+    String mac;
+    char c_mac[18];
+    mac = WiFi.macAddress();
+    mac.toCharArray(c_mac, 18);
+    id = c_mac;
+//    Serial.println(id);
 
-    s_topic.toCharArray(topic, (s_topic.length() + 1));
+//    String s_topic;
+//    s_topic = "/test/jj/" + String(id);
+//    s_topic.toCharArray(topic, (s_topic.length() + 1));
+//    Serial.println(topic);
+
+    delay(50);
 }
 
 void loop() {
@@ -124,54 +87,59 @@ void loop() {
     if (WiFi.waitForConnectResult() != WL_CONNECTED)
       return;
     Serial.println("WiFi connected");
-    delay(10000);
+    delay(10);
     }
 
 
-    // Connect to MQTT
-    if (WiFi.status() == WL_CONNECTED) {
-      if (!client.connected()) {
-        Serial.println("Connecting to MQTT server");
-        // .set_auth("test", "test")
-        if (client.connect(id, "test", "test")) {
-          Serial.println("Connected to MQTT server");
-        } else {
-          Serial.println("Could not connect to MQTT server");
-          delay(5000);
-        }
-      }
-    }
+//    // Connect to MQTT
+//    if (WiFi.status() == WL_CONNECTED) {
+//      if (!mqtt_client.connected()) {
+//        Serial.println("Connecting to MQTT server");
+//        if (mqtt_client.connect(id, mqtt_user, mqtt_pw)) {
+//          Serial.println("Connected to MQTT server");
+//        } else {
+//          Serial.println("Could not connect to MQTT server");
+//        }
+//      }
+//    }
 
-    //Send data to the MQTT
-    if (client.connected()){
 
       milli = millis();
-//    Serial.print(float(milli/1000.0000), 3); Serial.print(";");
-      float fmill = float(milli/1000.0000);
       // these methods (and a few others) are also available
       accelgyro.getAcceleration(&ax, &ay, &az);
       float fx = float(ax/4096.00);
       float fy = float(ay/4096.00);
       float fz = float(az/4096.00);
     
-      String pay = String(fmill) + ";" + String(fx) + ";" + String(fy) + ";" + String(fz); 
-      Serial.println(pay);
-      pay.toCharArray(data, (pay.length() + 1));
-      
-      client.publish(topic, data, true);
+//      String pay = String(milli) + ";" + String(fx) + ";" + String(fy) + ";" + String(fz); 
+//      Serial.println(pay);
+//      pay.toCharArray(data, (pay.length() + 1));
 
-      delay(200);
-
-      client.loop();
-    }
-
+    Serial.print("connecting to "); Serial.println(mii_host);
     
+    if (!client.connect(mii_host, mii_Port)) {
+      Serial.println(client.connect(mii_host, mii_Port));
+      Serial.println("connection failed");
+      return;
+    }
+    
+  // We now create a URI for the request
+  String url = "/XMII/Illuminator?QueryTemplate=dsag/datahandler/sensorDataHandler&Param.1=" + String(id) + "&Param.2=" + String(milli) + "&Param.3=" + String(fx) + "&Param.4=" + String(fy) + "&Param.5=" + String(fz) + "&IllumLoginName=" + mii_user +"&IllumLoginPassword=" + mii_pw;
+//  Serial.print("Requesting URL: "); Serial.println(url);
+  
+  // This will send the request to the server
+  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+               "Host: " + mii_host + "\r\n" + 
+               "Connection: close\r\n\r\n");
 
-    // display tab-separated accel x/y/z values
-//    Serial.print(float(ax/4096.00)); Serial.print(";");
-//    Serial.print(float(ay/4096.00)); Serial.print(";");
-//    Serial.print(float(az/4096.00)); Serial.print("\n");
+//  //Send data to the MQTT
+//  if (mqtt_client.connected()){
+//      
+//    mqtt_client.publish(topic, data, true);
+//
+//    mqtt_client.loop();
+//  }
 
-    delay(200);
+  delay(200);
 
 }
