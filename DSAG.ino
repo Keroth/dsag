@@ -30,6 +30,8 @@ unsigned long milli;
 
 char *id;
 
+String test123;
+
 
 char data[20];
 
@@ -67,7 +69,8 @@ void setup() {
     mac = WiFi.macAddress();
     mac.toCharArray(c_mac, 18);
     id = c_mac;
-//    Serial.println(id);
+    test123 = String(id);
+    Serial.println(test123);
 
 //    String s_topic;
 //    s_topic = "/test/jj/" + String(id);
@@ -90,7 +93,6 @@ void loop() {
     delay(10);
     }
 
-
 //    // Connect to MQTT
 //    if (WiFi.status() == WL_CONNECTED) {
 //      if (!mqtt_client.connected()) {
@@ -102,7 +104,6 @@ void loop() {
 //        }
 //      }
 //    }
-
 
       milli = millis();
       // these methods (and a few others) are also available
@@ -122,10 +123,10 @@ void loop() {
       Serial.println("connection failed");
       return;
     }
-    
+
   // We now create a URI for the request
-  String url = "/XMII/Illuminator?QueryTemplate=dsag/datahandler/sensorDataHandler&Param.1=" + String(id) + "&Param.2=" + String(milli) + "&Param.3=" + String(fx) + "&Param.4=" + String(fy) + "&Param.5=" + String(fz) + "&IllumLoginName=" + mii_user +"&IllumLoginPassword=" + mii_pw;
-//  Serial.print("Requesting URL: "); Serial.println(url);
+  String url = "/XMII/Illuminator?QueryTemplate=dsag/datahandler/sensorDataHandler&Param.1=" + test123 + "&Param.2=" + String(milli) + "&Param.3=" + String(fx) + "&Param.4=" + String(fy) + "&Param.5=" + String(fz) + "&IllumLoginName=" + mii_user +"&IllumLoginPassword=" + mii_pw;
+  Serial.print("Requesting URL: "); Serial.println(url);
   
   // This will send the request to the server
   client.print(String("GET ") + url + " HTTP/1.1\r\n" +
@@ -140,6 +141,6 @@ void loop() {
 //    mqtt_client.loop();
 //  }
 
-  delay(200);
+  delay(70);
 
 }
