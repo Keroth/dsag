@@ -6,25 +6,22 @@
 #include "MPU6050.h"
 #include "Wire.h"
 #include <ESP8266WiFi.h>
-#include <WiFiClientSecure.h>
-#include <PubSubClient.h>
+#include <ESP8266HTTPClient.h>
 #include "settings.h"
 
 
-// class default I2C address is 0x68
-// specific I2C addresses may be passed as a parameter here
-// AD0 low = 0x68 (default for InvenSense evaluation board)
-// AD0 high = 0x69
 MPU6050 accelgyro;
-//MPU6050 accelgyro(0x69); // <-- use for AD0 high
 
-
-
-//WiFiClientSecure wclient;
 WiFiClient client;
-//PubSubClient mqtt_client(mqtt_host, mqtt_port, client);
+
+HTTPClient http;  //Declare an object of class HTTPClient
+
+const char * headerkeys[] = {"User-Agent","Set-Cookie","Cookie","Date","Content-Type","Connection"};
+size_t headerkeyssize = sizeof(headerkeys)/sizeof(char*);
 
 int16_t ax, ay, az;
+
+long sumx, sumy, sumz;
 
 unsigned long milli;
 
@@ -32,10 +29,9 @@ char *id;
 
 String test123;
 
+int count = 0, times = 3, flag = 0;
 
-char data[20];
-
-char topic[26];
+String cookie = "";
 
 //-------------------------------------------
 //              SETUP
@@ -56,9 +52,9 @@ void setup() {
     delay(100);
     Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
 
-    accelgyro.setXAccelOffset(-1515);
-    accelgyro.setYAccelOffset(2068);
-    accelgyro.setZAccelOffset(1151);
+    accelgyro.setXAccelOffset(-1617);
+    accelgyro.setYAccelOffset(-57);
+    accelgyro.setZAccelOffset(4913);
 
     accelgyro.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
     delay(100);
@@ -72,12 +68,10 @@ void setup() {
     test123 = String(id);
     Serial.println(test123);
 
-//    String s_topic;
-//    s_topic = "/test/jj/" + String(id);
-//    s_topic.toCharArray(topic, (s_topic.length() + 1));
-//    Serial.println(topic);
-
     delay(50);
+
+    http.setReuse(true);
+    http.collectHeaders(headerkeys,headerkeyssize);
 }
 
 void loop() {
@@ -93,54 +87,85 @@ void loop() {
     delay(10);
     }
 
-//    // Connect to MQTT
-//    if (WiFi.status() == WL_CONNECTED) {
-//      if (!mqtt_client.connected()) {
-//        Serial.println("Connecting to MQTT server");
-//        if (mqtt_client.connect(id, mqtt_user, mqtt_pw)) {
-//          Serial.println("Connected to MQTT server");
-//        } else {
-//          Serial.println("Could not connect to MQTT server");
-//        }
-//      }
-//    }
+    Serial.println(count);
+    // these methods (and a few others) are also available
+    accelgyro.getAcceleration(&ax, &ay, &az);
+    sumx = sumx + ax;
+    sumy = sumy + ay;
+    sumz = sumz + az;
+      
 
+    if (count == times){  
+      int avgx = sumx / times; Serial.print(avgx); sumx = 0; Serial.print("\t");
+      int avgy = sumy / times; Serial.print(avgy); sumy = 0; Serial.print("\t");
+      int avgz = sumz / times; Serial.println(avgz); sumz = 0;
+      float fx = float(avgx/4096.00);
+      float fy = float(avgy/4096.00);
+      float fz = float(avgz/4096.00);
       milli = millis();
-      // these methods (and a few others) are also available
-      accelgyro.getAcceleration(&ax, &ay, &az);
-      float fx = float(ax/4096.00);
-      float fy = float(ay/4096.00);
-      float fz = float(az/4096.00);
-    
-//      String pay = String(milli) + ";" + String(fx) + ";" + String(fy) + ";" + String(fz); 
-//      Serial.println(pay);
-//      pay.toCharArray(data, (pay.length() + 1));
+      // We now create a URI for the request
+      String host = String(mii_host) + ":" + String(mii_Port);
+      
+      String payload = "/XMII/Illuminator?QueryTemplate=dsag/datahandler/sensorDataHandler&Param.1=" + test123 + "&Param.2=" + String(milli) + "&Param.3=" + String(fx) + "&Param.4=" + String(fy) + "&Param.5=" + String(fz);
+      String login = "&IllumLoginName=" + String(mii_user) +"&IllumLoginPassword=" + String(mii_pw);
+      String url = "";
+      if (flag == 0){
+        url = payload + login;
+        flag = 1;
+      } else {
+        url = payload;
+      }
 
-    Serial.print("connecting to "); Serial.println(mii_host);
-    
-    if (!client.connect(mii_host, mii_Port)) {
-      Serial.println(client.connect(mii_host, mii_Port));
-      Serial.println("connection failed");
-      return;
-    }
+      
+//      Serial.print("Requesting URL: "); Serial.println(url);
 
-  // We now create a URI for the request
-  String url = "/XMII/Illuminator?QueryTemplate=dsag/datahandler/sensorDataHandler&Param.1=" + test123 + "&Param.2=" + String(milli) + "&Param.3=" + String(fx) + "&Param.4=" + String(fy) + "&Param.5=" + String(fz) + "&IllumLoginName=" + mii_user +"&IllumLoginPassword=" + mii_pw;
-  Serial.print("Requesting URL: "); Serial.println(url);
+//      Serial.print("connecting to "); Serial.println(mii_host);
+    
+      if (!client.connect(mii_host, mii_Port)) {
+        Serial.println(client.connect(mii_host, mii_Port));
+        Serial.println("connection failed");
+        return;
+      }
   
-  // This will send the request to the server
-  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+      // This will send the request to the server
+      if (cookie == ""){
+        http.begin(mii_host, mii_Port, url);  //Specify request destination
+        int httpCode = http.GET();                                                                  //Send the request
+        Serial.println(httpCode);
+        Serial.println(url);
+   
+
+   
+          String pay = http.getString();   //Get the request response payload
+  //        Serial.println(pay);                     //Print the response payload
+  
+          Serial.printf("Header count: %d\r\n", http.headers());
+          for (int i=0; i < http.headers(); i++) {
+            Serial.printf("%s = %s\r\n", http.headerName(i).c_str(), http.header(i).c_str());
+          }
+          Serial.printf("Cookie: %s\r\n", http.header("Cookie").c_str());
+          Serial.printf("Set-Cookie: %s\r\n", http.header("Set-Cookie").c_str());
+          cookie = http.header("Set-Cookie").c_str();
+  
+ 
+        http.end();   //Close connection
+      } else {
+        client.print(String("GET ") + url + " HTTP/1.1\r\n" +
                "Host: " + mii_host + "\r\n" + 
+               "Cookie: " + cookie + "\r\n" +
                "Connection: close\r\n\r\n");
 
-//  //Send data to the MQTT
-//  if (mqtt_client.connected()){
-//      
-//    mqtt_client.publish(topic, data, true);
-//
-//    mqtt_client.loop();
-//  }
-
-  delay(70);
+         Serial.println("Respond:");
+         while(client.available()){
+            String line = client.readStringUntil('\r');
+            Serial.print(line);
+         }
+      }
+       
+      count = 0;
+    }
+    
+    count = count + 1;
+    delay(50);
 
 }
